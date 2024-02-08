@@ -4,6 +4,7 @@ const router=express.Router();
 const jwt=require("jsonwebtoken");
 const {User}=require("../db");
 const {JWT_SECRET}=require("../config");
+const bcrypt=require("bcryptjs");
 
 const Userverification =zod.object({
     username:zod.ZodString(),
@@ -37,21 +38,24 @@ router.post('/signup',async function(req,res,next){
             msg:"User already exist"
         })
     }
-
-    const user = await User.create({
-        username: req.body.username,
-        password: req.body.password,
-        firstName: req.body.firstName,
-        lastName: req.body.lastName,
+    bcrypt.hash(password,10).then(async(hash)=>{
+        const user = await User.create({
+            username: req.body.username,
+            password: req.body.password,
+            firstName: req.body.firstName,
+            lastName: req.body.lastName,
+        })
+        const userId=user._id;
+        const token=jwt.sign({
+            userId
+        },JWT_SECRET);
+        res.json({
+            msg:"user create successfully",
+            token:token
+        })
     })
-    const userId=user._id;
-    const token=jwt.sign({
-        userId
-    },JWT_SECRET);
-    res.json({
-        msg:"user create successfully",
-        token:token
-    })
+   
+   
     }
     catch(err){
         console.log(err);
@@ -70,25 +74,38 @@ router.post('/api/v1/user/signin',async function(req,res,next){
         const finduser=await User.findOne({
             username:req.body.username
         })
-        if(finduser.password==req.body.password){
+        if(!finduser){
+            res.status(400).json({
+                message: "Login not successful",
+                error: "User not found",
+              })
+            }
+            else{
+            bcrypt.compare(password,finduser.password).then(function(result){
             const userId=finduser._id;
+            const maxage=3*60*60;
             const token=jwt.sign({
                 userId
-            },JWT_SECRET);
+            },JWT_SECRET,{expiresIn:maxage});
+            res.cookie("jwt",token,{
+                httpOnly:true,
+                maxAge:maxage*1000,
+            });
+            result?
             res.status(200).json({
 
                 msg:"Welcome",
                 token:token
 
             })
+            :res.status(400).json({
+                msg:"Login not successful"
+            })
             return ;
+        })
 
         }
-        else{
-            res.status(411).json({
-                msg:"Invalid password"
-            })
-        }
+        
         res.status(411).json({
             msg:"Error while signing in"
         })

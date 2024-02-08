@@ -13,20 +13,23 @@ const Userverification =zod.object({
     lastName:zod.ZodString()
 
 })
+const Usersigninbody=zod.object({
+    username:zod.ZodString(),
+    password:zod.ZodString().min(7)
+})
 
 
 
 
 router.post('/signup',async function(req,res,next){
-    const userinfo=req.body;
     try{
-        const result=Userverification.safeParseAsync(userinfo);
+        const result=Usersigninbody.safeParseAsync(req.body);
         if(!result){
             return res.status(411).json({
                 msg:"Incorrect input"
             })
         }
-    const existinguser=User.findOne({
+    const existinguser=await User.findOne({
         email:req.body.email
     })
     if(existinguser){
@@ -55,6 +58,45 @@ router.post('/signup',async function(req,res,next){
     }
 
 });
+router.post('/api/v1/user/signin',async function(req,res,next){
+    const userinfo=req.body;
+    try{
+        const result=Userverification.safeParseAsync(userinfo);
+        if(!result){
+            return res.status(411).json({
+                msg:"Incorrect input"
+            })
+        }
+        const finduser=await User.findOne({
+            username:req.body.username
+        })
+        if(finduser.password==req.body.password){
+            const userId=finduser._id;
+            const token=jwt.sign({
+                userId
+            },JWT_SECRET);
+            res.status(200).json({
+
+                msg:"Welcome",
+                token:token
+
+            })
+            return ;
+
+        }
+        else{
+            res.status(411).json({
+                msg:"Invalid password"
+            })
+        }
+        res.status(411).json({
+            msg:"Error while signing in"
+        })
+    }
+    catch(err){
+        console.log(err);
+    }
+})
 
 
 

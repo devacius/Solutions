@@ -2,9 +2,21 @@ const express=require("express");
 const zod=require("zod");
 const router=express.Router();
 const jwt=require("jsonwebtoken");
-const {User}=require("../db");
+const {User, Account}=require("../db");
 const {JWT_SECRET}=require("../config");
 const bcrypt=require("bcryptjs");
+const  { authMiddleware } = require("../middleware");
+
+const searchuser=zod.object({
+    firstName:zod.string(),
+    lastName:zod.string()
+})
+
+const updatebody= zod.object({
+    password:zod.ZodString().optional(),
+    firstName:zod.ZodString().optional(),
+    lastName:zod.ZodString().optional(),
+})
 
 const Userverification =zod.object({
     username:zod.ZodString(),
@@ -20,7 +32,7 @@ const Usersigninbody=zod.object({
 })
 
 
-
+//* sign up route
 
 router.post('/signup',async function(req,res,next){
     try{
@@ -44,8 +56,14 @@ router.post('/signup',async function(req,res,next){
             password: req.body.password,
             firstName: req.body.firstName,
             lastName: req.body.lastName,
+            
         })
+
         const userId=user._id;
+        await Account.create({
+            userId,
+            balance:1+ Math.random()*1000
+        })
         const token=jwt.sign({
             userId
         },JWT_SECRET);
@@ -62,6 +80,8 @@ router.post('/signup',async function(req,res,next){
     }
 
 });
+
+//* signin route
 router.post('/api/v1/user/signin',async function(req,res,next){
     const userinfo=req.body;
     try{
@@ -114,6 +134,49 @@ router.post('/api/v1/user/signin',async function(req,res,next){
         console.log(err);
     }
 })
+
+//* update route
+router.put('/', authMiddleware, async(req,res)=>{
+    const {success}=updatebody.safeParse(req.body);
+    if(!success){
+        res.status(411).json({
+            msg:"Incorrect credentials"
+        })
+    }
+    await User.updateOne(req.body,{
+        _id:req.userId
+    })
+        res.json({
+            msg:"Update Successfully"
+        })
+})
+
+//* get route for sending money
+router.get('/bulk',async function(req,res){
+const filter=req.query.filter || "";  //* used to take query from the request header and with filter=? as the parameter
+const users=await User.find({
+    $or:[{
+        firstName:{
+            "$regrex":filter
+        }
+    },{lastName:{
+        "$regrex":filter
+    }
+
+    
+    }]
+})
+res.json({
+    user:users.map(user=>({
+        username:user.username,
+        firstName:user.firstName,
+        lastName:user.lastName,
+        _id:user._id
+    }))
+})
+
+});
+
 
 
 

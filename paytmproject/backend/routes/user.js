@@ -5,7 +5,7 @@ const jwt=require("jsonwebtoken");
 const {User, Account}=require("../db");
 const {JWT_SECRET}=require("../config");
 const bcrypt=require("bcryptjs");
-const  { authMiddleware } = require("../middleware");
+const   authMiddleware  = require("../middleware");
 
 const searchuser=zod.object({
     firstName:zod.string(),
@@ -13,47 +13,52 @@ const searchuser=zod.object({
 })
 
 const updatebody= zod.object({
-    password:zod.ZodString().optional(),
-    firstName:zod.ZodString().optional(),
-    lastName:zod.ZodString().optional(),
+    password:zod.string().optional(),
+    firstName:zod.string().optional(),
+    lastName:zod.string().optional(),
 })
 
 const Userverification =zod.object({
-    username:zod.ZodString(),
-    password:zod.ZodString().min(7),
-    email:zod.ZodString().email(),
-    firstName:zod.ZodString().min(2),
-    lastName:zod.ZodString()
+    username:zod.string(),
+    firstName:zod.string().min(2),
+    lastName:zod.string(),
+    password:zod.string().min(7),
 
+})
+const signupBody = zod.object({
+    username: zod.string(),
+	firstName: zod.string(),
+	lastName: zod.string(),
+	password: zod.string(),
 })
 const Usersigninbody=zod.object({
-    username:zod.ZodString(),
-    password:zod.ZodString().min(7)
+    username:zod.string(),
+    password:zod.string().min(7)
 })
 
 
-//* sign up route
+//* sign up route by me 
 
 router.post('/signup',async function(req,res,next){
     try{
-        const result=Usersigninbody.safeParseAsync(req.body);
+        const result=Userverification.safeParseAsync(req.body);
         if(!result){
             return res.status(411).json({
                 msg:"Incorrect input"
             })
         }
     const existinguser=await User.findOne({
-        email:req.body.email
+        username:req.body.username
     })
     if(existinguser){
         return res.status(411).json({
             msg:"User already exist"
         })
     }
-    bcrypt.hash(password,10).then(async(hash)=>{
+    bcrypt.hash(req.body.password,10).then(async(hash)=>{
         const user = await User.create({
             username: req.body.username,
-            password: req.body.password,
+            password: hash,
             firstName: req.body.firstName,
             lastName: req.body.lastName,
             
@@ -81,11 +86,55 @@ router.post('/signup',async function(req,res,next){
 
 });
 
-//* signin route
-router.post('/api/v1/user/signin',async function(req,res,next){
+//* sign up route of harkirat
+// router.post("/signup", async (req, res) => {
+//     const  result = signupBody.safeParse(req.body);
+    
+//     if (!result.success) {
+        
+//         return res.status(411).json({
+//             message: "Incorrect credentials"
+//         })
+//     }
+
+//     const existingUser = await User.findOne({
+//         username: req.body.username
+//     })
+
+//     if (existingUser) {
+//         return res.status(411).json({
+//             message: "Email already taken/Incorrect inputs"
+//         })
+//     }
+
+//     const user = await User.create({
+//         username: req.body.username,
+//         password: req.body.password,
+//         firstName: req.body.firstName,
+//         lastName: req.body.lastName,
+//     })
+//     const userId = user._id;
+
+//     await Account.create({
+//         userId,
+//         balance: 1 + Math.random() * 10000
+//     })
+
+//     const token = jwt.sign({
+//         userId
+//     }, JWT_SECRET);
+
+//     res.json({
+//         message: "User created successfully",
+//         token: token
+//     })
+// })
+
+// //* signin route
+router.post('/signin',async function(req,res,next){
     const userinfo=req.body;
     try{
-        const result=Userverification.safeParseAsync(userinfo);
+        const result=Usersigninbody.safeParseAsync(userinfo);
         if(!result){
             return res.status(411).json({
                 msg:"Incorrect input"
@@ -101,7 +150,7 @@ router.post('/api/v1/user/signin',async function(req,res,next){
               })
             }
             else{
-            bcrypt.compare(password,finduser.password).then(function(result){
+            bcrypt.compare(req.body.password,finduser.password).then(function(result){
             const userId=finduser._id;
             const maxage=3*60*60;
             const token=jwt.sign({
@@ -126,16 +175,14 @@ router.post('/api/v1/user/signin',async function(req,res,next){
 
         }
         
-        res.status(411).json({
-            msg:"Error while signing in"
-        })
+      
     }
     catch(err){
         console.log(err);
     }
 })
 
-//* update route
+// //* update route
 router.put('/', authMiddleware, async(req,res)=>{
     const {success}=updatebody.safeParse(req.body);
     if(!success){
@@ -143,15 +190,15 @@ router.put('/', authMiddleware, async(req,res)=>{
             msg:"Incorrect credentials"
         })
     }
-    await User.updateOne(req.body,{
+    await User.updateOne({
         _id:req.userId
-    })
+    },req.body)
         res.json({
             msg:"Update Successfully"
         })
 })
 
-//* get route for sending money
+// //* get route for sending money
 router.get('/bulk',async function(req,res){
 const filter=req.query.filter || "";  //* used to take query from the request header and with filter=? as the parameter
 const users=await User.find({
@@ -180,6 +227,4 @@ res.json({
 
 
 
-module.exports={
-    router
-}
+module.exports=router;

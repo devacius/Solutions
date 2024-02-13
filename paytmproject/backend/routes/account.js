@@ -2,10 +2,10 @@ const { Account } = require("../db");
 const zod=require("zod");
 const authMiddleware = require("../middleware");
 const { Mongoose } = require("mongoose");
-
+const express=require("express")
 const transfer=zod.object({
-    to:zod.ZodString(),
-    amount:zod.ZodNumber()
+    to:zod.string(),
+    amount:zod.number()
 })
 const router=express.Router();
 router.get('/balance',async(req,res)=>{
@@ -57,4 +57,5 @@ router.post('/transfer',authMiddleware,async(req,res)=>{
     msg:"Transfer successful"
  });    
 });
+
 module.exports=router;

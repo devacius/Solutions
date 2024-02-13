@@ -1,6 +1,6 @@
 const { JWT_SECRET } = require("./config");
 const jwt = require("jsonwebtoken");
-async function authMiddleware(req,res,next){
+const  authMiddleware=(req,res,next)=>{
     //! Authentication by Harkirat based on manual jwttoken
     // const authHeader=req.headers.authorization;
     // if(!authHeader || !authHeader.startsWith('Bearer')){
@@ -34,9 +34,7 @@ async function authMiddleware(req,res,next){
       }
     }
    else {
-    return res
-      .status(401)
-      .json({ message: "Not authorized, token not available" })
+    return res.status(401).json({ message: "Not authorized, token not available" })
   }
 
   

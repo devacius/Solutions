@@ -199,7 +199,7 @@ router.put('/', authMiddleware, async(req,res)=>{
 })
 
 // //* get route for sending money
-router.get('/bulk',async function(req,res){
+router.get('/search',async function(req,res){
 const filter=req.query.filter || "";  //* used to take query from the request header and with filter=? as the parameter
 const users=await User.find({
     $or:[{
